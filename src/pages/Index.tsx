@@ -33,11 +33,14 @@ const faqItems = [
   { q: 'Есть ли гарантия?', a: 'Да, мы даем 100% гарантию на все покупки. Если возникнет проблема - вернем деньги.' },
 ];
 
+const API_URL = 'https://functions.poehali.dev/73b4d0b5-c9f6-4419-bde1-cc175403f3c8';
+
 const Index = () => {
   const [selectedPackage, setSelectedPackage] = useState<number | null>(null);
   const [orderDialogOpen, setOrderDialogOpen] = useState(false);
   const [playerId, setPlayerId] = useState('');
   const [playerIdError, setPlayerIdError] = useState('');
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const { toast } = useToast();
 
   const selectedPkg = ucPackages.find(pkg => pkg.id === selectedPackage);
@@ -66,16 +69,48 @@ const Index = () => {
     return true;
   };
 
-  const handleConfirmOrder = () => {
+  const handleConfirmOrder = async () => {
     if (!validatePlayerId(playerId)) return;
+    if (!selectedPkg) return;
 
-    toast({
-      title: '🎮 Заказ оформлен!',
-      description: `Пакет ${selectedPkg?.uc} UC для ID: ${playerId}. Ожидайте зачисления в течение 1-5 минут.`,
-    });
+    setIsSubmitting(true);
 
-    setOrderDialogOpen(false);
-    setPlayerId('');
+    try {
+      const response = await fetch(API_URL, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          player_id: playerId,
+          uc_amount: selectedPkg.uc,
+          bonus_uc: selectedPkg.bonus,
+          price: selectedPkg.price,
+        }),
+      });
+
+      if (!response.ok) {
+        throw new Error('Ошибка при создании заказа');
+      }
+
+      const data = await response.json();
+
+      toast({
+        title: '🎮 Заказ оформлен!',
+        description: `Заказ #${data.id}: ${selectedPkg.uc} UC для ID ${playerId}. Ожидайте зачисления в течение 1-5 минут.`,
+      });
+
+      setOrderDialogOpen(false);
+      setPlayerId('');
+    } catch (error) {
+      toast({
+        title: '❌ Ошибка',
+        description: 'Не удалось оформить заказ. Попробуйте позже или свяжитесь с поддержкой.',
+        variant: 'destructive',
+      });
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   return (
@@ -379,15 +414,26 @@ const Index = () => {
                 variant="outline"
                 onClick={() => setOrderDialogOpen(false)}
                 className="w-full sm:w-auto"
+                disabled={isSubmitting}
               >
                 Отмена
               </Button>
               <Button
                 onClick={handleConfirmOrder}
                 className="w-full sm:w-auto bg-primary hover:bg-primary/90"
+                disabled={isSubmitting}
               >
-                <Icon name="CheckCircle" size={18} className="mr-2" />
-                Оформить заказ
+                {isSubmitting ? (
+                  <>
+                    <Icon name="Loader2" size={18} className="mr-2 animate-spin" />
+                    Оформляем...
+                  </>
+                ) : (
+                  <>
+                    <Icon name="CheckCircle" size={18} className="mr-2" />
+                    Оформить заказ
+                  </>
+                )}
               </Button>
             </DialogFooter>
           </DialogContent>

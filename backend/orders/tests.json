@@ -1,0 +1,32 @@
+{
+  "tests": [
+    {
+      "name": "Create new order",
+      "method": "POST",
+      "path": "/",
+      "body": {
+        "player_id": "5123456789",
+        "uc_amount": 325,
+        "bonus_uc": 25,
+        "price": 375
+      },
+      "expectedStatus": 201,
+      "expectedBody": {
+        "player_id": "string",
+        "status": "string"
+      },
+      "bodyMatcher": "partial"
+    },
+    {
+      "name": "Get all orders",
+      "method": "GET",
+      "path": "/",
+      "expectedStatus": 200,
+      "expectedBody": {
+        "orders": "array",
+        "count": "number"
+      },
+      "bodyMatcher": "partial"
+    }
+  ]
+}
