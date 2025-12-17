@@ -1,0 +1,14 @@
+{
+  "tests": [
+    {
+      "name": "Get all settings",
+      "method": "GET",
+      "path": "/",
+      "expectedStatus": 200,
+      "expectedBody": {
+        "telegram_contact": "string"
+      },
+      "bodyMatcher": "partial"
+    }
+  ]
+}

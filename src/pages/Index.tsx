@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -33,7 +33,9 @@ const faqItems = [
   { q: 'Есть ли гарантия?', a: 'Да, мы даем 100% гарантию на все покупки. Если возникнет проблема - вернем деньги.' },
 ];
 
-const API_URL = 'https://functions.poehali.dev/73b4d0b5-c9f6-4419-bde1-cc175403f3c8';
+const ORDERS_API = 'https://functions.poehali.dev/73b4d0b5-c9f6-4419-bde1-cc175403f3c8';
+const PAYMENT_API = 'https://functions.poehali.dev/60f4a9e0-1dc7-4456-8a9e-f1169c728c9c';
+const SETTINGS_API = 'https://functions.poehali.dev/1cf54fcb-967f-4475-94e2-2fd4c4a7cfd4';
 
 const Index = () => {
   const [selectedPackage, setSelectedPackage] = useState<number | null>(null);
@@ -41,7 +43,15 @@ const Index = () => {
   const [playerId, setPlayerId] = useState('');
   const [playerIdError, setPlayerIdError] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [contacts, setContacts] = useState({ telegram_contact: '@your_telegram', whatsapp_contact: '+79001234567' });
   const { toast } = useToast();
+
+  useEffect(() => {
+    fetch(SETTINGS_API)
+      .then(res => res.json())
+      .then(data => setContacts(data))
+      .catch(() => {});
+  }, []);
 
   const selectedPkg = ucPackages.find(pkg => pkg.id === selectedPackage);
 
@@ -76,7 +86,7 @@ const Index = () => {
     setIsSubmitting(true);
 
     try {
-      const response = await fetch(API_URL, {
+      const orderResponse = await fetch(ORDERS_API, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -89,19 +99,40 @@ const Index = () => {
         }),
       });
 
-      if (!response.ok) {
+      if (!orderResponse.ok) {
         throw new Error('Ошибка при создании заказа');
       }
 
-      const data = await response.json();
+      const orderData = await orderResponse.json();
 
-      toast({
-        title: '🎮 Заказ оформлен!',
-        description: `Заказ #${data.id}: ${selectedPkg.uc} UC для ID ${playerId}. Ожидайте зачисления в течение 1-5 минут.`,
+      const paymentResponse = await fetch(PAYMENT_API, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          order_id: orderData.id,
+          amount: selectedPkg.price,
+          description: `Пополнение ${selectedPkg.uc} UC для Player ID: ${playerId}`,
+        }),
       });
 
-      setOrderDialogOpen(false);
-      setPlayerId('');
+      if (!paymentResponse.ok) {
+        throw new Error('Ошибка при создании платежа');
+      }
+
+      const paymentData = await paymentResponse.json();
+
+      if (paymentData.payment_url) {
+        window.location.href = paymentData.payment_url;
+      } else {
+        toast({
+          title: '🎮 Заказ создан!',
+          description: `Заказ #${orderData.id} создан. Свяжитесь с поддержкой для оплаты.`,
+        });
+        setOrderDialogOpen(false);
+        setPlayerId('');
+      }
     } catch (error) {
       toast({
         title: '❌ Ошибка',

@@ -1,0 +1,19 @@
+{
+  "tests": [
+    {
+      "name": "Create payment with valid data",
+      "method": "POST",
+      "path": "/",
+      "body": {
+        "order_id": 1,
+        "amount": 375,
+        "description": "Пополнение 325 UC"
+      },
+      "expectedStatus": 200,
+      "expectedBody": {
+        "payment_url": "string"
+      },
+      "bodyMatcher": "partial"
+    }
+  ]
+}
