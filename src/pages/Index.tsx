@@ -4,6 +4,10 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { useToast } from '@/hooks/use-toast';
 import Icon from '@/components/ui/icon';
 
 const ucPackages = [
@@ -31,6 +35,48 @@ const faqItems = [
 
 const Index = () => {
   const [selectedPackage, setSelectedPackage] = useState<number | null>(null);
+  const [orderDialogOpen, setOrderDialogOpen] = useState(false);
+  const [playerId, setPlayerId] = useState('');
+  const [playerIdError, setPlayerIdError] = useState('');
+  const { toast } = useToast();
+
+  const selectedPkg = ucPackages.find(pkg => pkg.id === selectedPackage);
+
+  const handleBuyClick = (pkgId: number) => {
+    setSelectedPackage(pkgId);
+    setOrderDialogOpen(true);
+    setPlayerId('');
+    setPlayerIdError('');
+  };
+
+  const validatePlayerId = (id: string) => {
+    if (!id.trim()) {
+      setPlayerIdError('Введите Player ID');
+      return false;
+    }
+    if (!/^\d+$/.test(id)) {
+      setPlayerIdError('Player ID должен содержать только цифры');
+      return false;
+    }
+    if (id.length < 8 || id.length > 12) {
+      setPlayerIdError('Player ID должен быть от 8 до 12 цифр');
+      return false;
+    }
+    setPlayerIdError('');
+    return true;
+  };
+
+  const handleConfirmOrder = () => {
+    if (!validatePlayerId(playerId)) return;
+
+    toast({
+      title: '🎮 Заказ оформлен!',
+      description: `Пакет ${selectedPkg?.uc} UC для ID: ${playerId}. Ожидайте зачисления в течение 1-5 минут.`,
+    });
+
+    setOrderDialogOpen(false);
+    setPlayerId('');
+  };
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-background via-background to-card">
@@ -91,7 +137,14 @@ const Index = () => {
                   </CardHeader>
                   <CardContent className="text-center space-y-4">
                     <div className="text-4xl font-bold text-primary">{pkg.price} ₽</div>
-                    <Button className="w-full bg-primary hover:bg-primary/90 text-lg py-6" size="lg">
+                    <Button 
+                      className="w-full bg-primary hover:bg-primary/90 text-lg py-6" 
+                      size="lg"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleBuyClick(pkg.id);
+                      }}
+                    >
                       <Icon name="ShoppingCart" size={20} className="mr-2" />
                       Купить
                     </Button>
@@ -260,6 +313,85 @@ const Index = () => {
             </Card>
           </TabsContent>
         </Tabs>
+
+        <Dialog open={orderDialogOpen} onOpenChange={setOrderDialogOpen}>
+          <DialogContent className="sm:max-w-md">
+            <DialogHeader>
+              <DialogTitle className="flex items-center gap-2">
+                <Icon name="ShoppingCart" size={24} className="text-primary" />
+                Оформление заказа
+              </DialogTitle>
+              <DialogDescription>
+                Введите ваш Player ID для получения UC
+              </DialogDescription>
+            </DialogHeader>
+            
+            {selectedPkg && (
+              <div className="bg-primary/10 rounded-lg p-4 my-4">
+                <div className="flex items-center justify-between mb-2">
+                  <span className="text-sm text-muted-foreground">Выбранный пакет:</span>
+                  <span className="font-bold text-lg">{selectedPkg.uc} UC</span>
+                </div>
+                {selectedPkg.bonus > 0 && (
+                  <div className="flex items-center justify-between mb-2">
+                    <span className="text-sm text-muted-foreground">Бонус:</span>
+                    <span className="font-semibold text-secondary">+{selectedPkg.bonus} UC</span>
+                  </div>
+                )}
+                <div className="flex items-center justify-between pt-2 border-t border-border">
+                  <span className="text-sm text-muted-foreground">К оплате:</span>
+                  <span className="font-bold text-2xl text-primary">{selectedPkg.price} ₽</span>
+                </div>
+              </div>
+            )}
+
+            <div className="space-y-4">
+              <div className="space-y-2">
+                <Label htmlFor="playerId" className="flex items-center gap-2">
+                  <Icon name="User" size={16} />
+                  Player ID
+                </Label>
+                <Input
+                  id="playerId"
+                  type="text"
+                  placeholder="Например: 5123456789"
+                  value={playerId}
+                  onChange={(e) => {
+                    setPlayerId(e.target.value);
+                    if (playerIdError) validatePlayerId(e.target.value);
+                  }}
+                  className={playerIdError ? 'border-destructive' : ''}
+                />
+                {playerIdError && (
+                  <p className="text-sm text-destructive flex items-center gap-1">
+                    <Icon name="AlertCircle" size={14} />
+                    {playerIdError}
+                  </p>
+                )}
+                <p className="text-xs text-muted-foreground">
+                  💡 Найдите ваш Player ID в игре: Профиль → Основное
+                </p>
+              </div>
+            </div>
+
+            <DialogFooter className="flex-col sm:flex-row gap-2">
+              <Button
+                variant="outline"
+                onClick={() => setOrderDialogOpen(false)}
+                className="w-full sm:w-auto"
+              >
+                Отмена
+              </Button>
+              <Button
+                onClick={handleConfirmOrder}
+                className="w-full sm:w-auto bg-primary hover:bg-primary/90"
+              >
+                <Icon name="CheckCircle" size={18} className="mr-2" />
+                Оформить заказ
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
 
         <footer className="text-center mt-16 pt-8 border-t border-border">
           <p className="text-sm text-muted-foreground">© 2024 UC Store. Все права защищены.</p>
